@@ -1,0 +1,57 @@
+---
+title: "Human Activity Recognition By Machine Learning"
+author: "Quansheng"
+date: "Wednesday, July 16, 2014"
+output: word_document
+---
+
+**Abstract Four sensors were attached to arm, belt, forearm of the human body and excising equipment dumbbell and their movement during a dumbbell excising routine, Unilateral Dumbbell Biceps Curl, were recorded by sensors. The routine was doned in five diffirent ways and reported by the "classe" variable. Using the random forest machine learning algorithm, the fashions of the routine were accurately predicted by the sensor movement data, with accuracy of 99.34%. **
+
+##Data Processing
+
+- download human activity data. The data were splited into training and test datasets
+```{r,echo=T,cache=T}
+        if (!file.exists("./PML")) dir.create ("./PML")
+        myTrainUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+        download.file(myTrainUrl,"./PML/pml-training.csv")
+        myTestUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+        download.file(myTestUrl,"./PML/pml-testing.csv")       
+```
+- read in training and testing csv files by read.csv.
+```{r,echo=T,cache=T}
+        data<-read.csv("./PML/pml-training.csv")
+        dataTest<-read.csv("./PML/pml-testing.csv")
+```
+
+## Build a model with "classe" as an outcome and other variables as predictors
+
+- Use sensor movement data attached to arm, forearm, belt and dumbbell as predcitors of how the routines are done, reported in the "classe" column. Irrelevant id variables and empty columns were removed and only columns containing those sensor data are used in our modeling process.
+```{r,echo=T,cache=T}
+        library(caret)       
+        sensordata<-data[,c(8:11,37:49,60:68,84:86,102,113:124,140,151:160)]
+```
+
+- Split sensor data sets into training set and cross validation set. Training data were used to training models and crossValidation data were used to assess the out of sample error.
+```{r,echo=T,cache=T}
+        inTrain<-createDataPartition(sensordata$classe,p=0.8,list=FALSE)
+        training<-sensordata[inTrain,]
+        crossValidation<-sensordata[-inTrain,]
+```        
+
+- Fit training set data with random forest "rf" method. The data were preprocessed with knnImpute method to replace NA with near neigbor average.
+```{r,echo=T,cache=T}
+        modelFit<-train(classe~.,data=training,preProcess="knnImpute",
+                        method="rf",trControl=trainControl(method="oob"))
+```
+- Predict the classe outcome of the cross validation data with the model built with "rf" method. The out of sample error was assessed with 99.34%.
+```{r,echo=T,cache=T}
+        predictions<-predict(modelFit,crossValidation)
+        confusionMatrix(predictions,crossValidation$classe)
+```        
+
+- Predict the classe outcome of the test data set. 
+```{r,echo=T,cache=T}        
+        sensordataTest<-dataTest[,c(8:11,37:49,60:68,84:86,102,113:124,140,151:160)]
+        predictTest<-predict(modelFit,sensordataTest)
+        predictTest
+```
